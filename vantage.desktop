@@ -1,8 +1,11 @@
 [Desktop Entry]
 Type=Application
-Encoding=UTF-8
+Version=1.0
 Name=Lenovo Vantage
-Comment=Lenovo Vantage is a free utility software designed by the electronics manufacturing and technology company Lenovo.
-Exec=/usr/bin/vantage %f
-Icon=/usr/share/icons/hicolor/scalable/apps/vantage.png
-Terminal=False
+GenericName=Device Control Center
+Comment=Control conservation mode, fan mode, Fn lock, battery health and more on Lenovo laptops
+Exec=vantage %f
+Icon=vantage
+Terminal=false
+Categories=System;Settings;HardwareSettings;
+Keywords=lenovo;vantage;battery;fan;conservation;thermal;

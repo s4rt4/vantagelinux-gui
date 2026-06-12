@@ -1,87 +1,59 @@
 #!/bin/bash
+# Install runtime dependencies for the Vantage PyQt6 GUI.
+#
+# The GUI needs: Python 3 + PyQt6, polkit (pkexec) for the privileged sysfs
+# writes (conservation_mode / fan_mode / fn_lock), and upower for battery info.
+# pactl (PipeWire/PulseAudio) and NetworkManager are optional — the backend
+# degrades gracefully if they are missing.
 
-# Function to detect package manager
 detect_package_manager() {
-    if command -v pacman &> /dev/null; then
-        echo "pacman"
-    elif command -v apt &> /dev/null; then
-        echo "apt"
-    elif command -v dnf &> /dev/null; then
-        echo "dnf"
-    elif command -v zypper &> /dev/null; then
-        echo "zypper"
-    else
-        echo "unknown"
-    fi
+    if command -v pacman &> /dev/null; then echo "pacman"
+    elif command -v apt &> /dev/null; then echo "apt"
+    elif command -v dnf &> /dev/null; then echo "dnf"
+    elif command -v zypper &> /dev/null; then echo "zypper"
+    else echo "unknown"; fi
 }
 
-# check for the distro
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    distro=$ID_LIKE
-
-    # Some distros like Fedora doesn't have "ID_LIKE" in their /etc/os-release file, sadly
-    if [ -z "$distro" ]; then
-        distro=$ID
-    fi
-fi
-
-case $distro in
-  # Now Vantage can be installed on Cachy OS, ArcoLinux... you name it!
-  "arch")
-    echo "Installing on Arch Linux or derivative"
-    pacman -Qi zenity xorg-xinput networkmanager &> /dev/null || sudo pacman -S zenity xorg-xinput networkmanager
-    ;;
-
-  # Now Vantage can not only be installed on Ubuntu or POP OS but also Kubuntu, KDE Neon, Xubuntu...
-  "debian")
-    echo "Installing on Debian or derivative"
-    dpkg -s zenity xinput &> /dev/null || sudo apt install zenity xinput
-    ;;
-  
-  # Entry for Linux Mint 21.3 Edge
-  "ubuntu debian")
-    echo "Installing on Linux Mint Edge"
-    dpkg -s zenity xinput &> /dev/null || sudo apt install zenity xinput
-    ;;  
-
-  "fedora")
-    echo "Installing on Fedora"
-    rpm -q zenity xinput NetworkManager pipewire-pulseaudio &> /dev/null || sudo dnf install zenity xinput NetworkManager pipewire-pulseaudio
-    ;;
-
-  "opensuse-tumbleweed")
-    echo "Installing on OpenSuse"
-    rpm -q zenity xinput NetworkManager pipewire-pulseaudio &> /dev/null || sudo zypper install zenity xinput NetworkManager pipewire-pulseaudio
-    ;;
-
-  *)
-    echo "Unknown Distro, attempting package manager detection..."
-    package_manager=$(detect_package_manager)
-    
-    case $package_manager in
-        "pacman")
-            echo "Detected pacman package manager"
-            pacman -Qi zenity xorg-xinput networkmanager &> /dev/null || sudo pacman -S zenity xorg-xinput networkmanager
+install_for() {
+    case "$1" in
+        pacman)
+            echo "Detected pacman (Arch and derivatives)"
+            sudo pacman -S --needed python-pyqt6 polkit upower
             ;;
-        "apt")
-            echo "Detected apt package manager"
-            dpkg -s zenity xinput &> /dev/null || sudo apt install zenity xinput
+        apt)
+            echo "Detected apt (Debian/Ubuntu and derivatives)"
+            sudo apt update
+            sudo apt install -y python3-pyqt6 policykit-1 upower
             ;;
-        "dnf")
-            echo "Detected dnf package manager"
-            rpm -q zenity xinput NetworkManager pipewire-pulseaudio &> /dev/null || sudo dnf install zenity xinput NetworkManager pipewire-pulseaudio
+        dnf)
+            echo "Detected dnf (Fedora and derivatives)"
+            sudo dnf install -y python3-pyqt6 polkit upower
             ;;
-        "zypper")
-            echo "Detected zypper package manager"
-            rpm -q zenity xinput NetworkManager pipewire-pulseaudio &> /dev/null || sudo zypper install zenity xinput NetworkManager pipewire-pulseaudio
+        zypper)
+            echo "Detected zypper (openSUSE)"
+            sudo zypper install -y python3-PyQt6 polkit upower
             ;;
         *)
-            echo "Unable to detect compatible package manager, exiting."
+            echo "Unable to detect a supported package manager."
+            echo "Please install manually: Python 3, PyQt6, polkit, upower."
             exit 1
             ;;
     esac
-    ;;
+}
+
+# Prefer the distro family from /etc/os-release, fall back to PM detection.
+distro=""
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    distro="${ID_LIKE:-$ID}"
+fi
+
+case "$distro" in
+    *arch*)             install_for pacman ;;
+    *debian*|*ubuntu*)  install_for apt ;;
+    *fedora*|*rhel*)    install_for dnf ;;
+    *suse*)             install_for zypper ;;
+    *)                  install_for "$(detect_package_manager)" ;;
 esac
 
-echo "Requirements are installed"
+echo "Requirements are installed."

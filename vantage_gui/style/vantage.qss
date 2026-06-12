@@ -1,0 +1,166 @@
+/* Vantage mockup theme — colors mirror tokens in theme.py (C.*) */
+
+QWidget {
+    color: #f3f3f3;
+    background: transparent;
+    font-size: 14px;
+}
+
+QMainWindow, #contentArea { background: #0a0a0a; }
+
+/* ---- left rail -------------------------------------------------------- */
+#navRail { background: #1b1b1b; }
+
+QLabel[class="wordmark"] {
+    font-size: 22px;
+    font-weight: 600;
+    color: #f3f3f3;
+}
+
+QPushButton[class="navItem"] {
+    text-align: left;
+    padding-left: 13px;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 6px;
+    color: #a0a0a0;
+    font-size: 15px;
+    background: transparent;
+}
+QPushButton[class="navItem"]:hover { background: #242424; color: #f3f3f3; }
+QPushButton[class="navItem"]:checked {
+    background: #2d2d2d;
+    border-left: 3px solid #4cc2ff;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* secondary nav (device settings / diagnostics) sits on the dark bg */
+QWidget[class="subnav"] QPushButton[class="navItem"] { font-size: 14px; }
+
+/* ---- top bar ---------------------------------------------------------- */
+#topbar { background: #0a0a0a; border-bottom: 1px solid #1c1c1c; }
+
+QPushButton[class="iconBtn"] {
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+}
+QPushButton[class="iconBtn"]:hover { background: #222222; }
+
+/* ---- typography ------------------------------------------------------- */
+QLabel[class="pageTitle"]   { font-size: 26px; font-weight: 600; color: #f3f3f3; }
+QLabel[class="pageHeading"] { font-size: 24px; font-weight: 400; color: #f3f3f3; }
+QLabel[class="sectionTitle"]{ font-size: 18px; font-weight: 600; color: #f3f3f3; }
+QLabel[class="cardTitle"]   { font-size: 16px; font-weight: 600; color: #f3f3f3; }
+QLabel[class="rowTitle"]    { font-size: 14px; font-weight: 600; color: #f3f3f3; }
+QLabel[class="muted"]       { color: #a0a0a0; }
+QLabel[class="rowLabel"]    { color: #a0a0a0; }
+QLabel[class="rowValue"]    { color: #f3f3f3; font-weight: 600; }
+QLabel[class="link"]        { color: #4cc2ff; font-weight: 600; }
+QLabel[class="dots"]        { color: #a0a0a0; font-size: 16px; letter-spacing: 1px; }
+QLabel[class="tileLabel"]   { color: #f3f3f3; font-weight: 600; }
+QLabel[class="bigStat"]     { font-size: 22px; font-weight: 700; color: #f3f3f3; }
+QLabel[class="legion"]      { font-size: 40px; font-weight: 800; color: #ffffff; letter-spacing: 4px; }
+
+/* ---- cards / surfaces ------------------------------------------------- */
+QFrame[class="card"] {
+    background: #1f1f1f;
+    border-radius: 10px;
+}
+QWidget[class="innerBox"] { background: #161616; border-radius: 8px; }
+QWidget[class="heroInner"] { background: #161616; border-radius: 10px; }
+QFrame[class="noticeBox"] {
+    background: #161616;
+    border-left: 3px solid #d29922;
+    border-radius: 6px;
+}
+QFrame[class="rule"] { background: #2e2e2e; border: none; }
+
+/* support / dark tiles on Home */
+QPushButton[class="tile"] {
+    background: #141414;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+}
+QPushButton[class="tile"]:hover { background: #1c1c1c; }
+QLabel[class="promoArt"] {
+    background: #2a2336;
+    border-radius: 8px;
+    color: #c9b8ff;
+    font-weight: 700;
+}
+
+/* big utilities tiles */
+QPushButton[class="bigTile"] {
+    background: #1f1f1f;
+    border: none;
+    border-radius: 10px;
+    padding: 20px;
+}
+QPushButton[class="bigTile"]:hover { background: #262626; }
+
+/* ---- buttons / pills -------------------------------------------------- */
+QPushButton[class="primaryPill"] {
+    background: #9fd4f5;
+    color: #0a2a3f;
+    border: none;
+    border-radius: 16px;
+    padding: 8px 20px;
+    font-weight: 600;
+}
+QPushButton[class="primaryPill"]:hover { background: #b6e0fa; }
+
+/* ---- segmented control (Low / High / Off) ----------------------------- */
+QRadioButton[class="segment"] {
+    background: #161616;
+    border: 1px solid #2e2e2e;
+    border-radius: 8px;
+    padding: 16px 26px;
+    color: #f3f3f3;
+    font-weight: 600;
+    spacing: 10px;
+}
+QRadioButton[class="segment"]:hover { background: #1e1e1e; }
+QRadioButton[class="segment"]:checked {
+    background: #16314a;
+    border: 1px solid #4cc2ff;
+}
+QRadioButton[class="segment"]::indicator {
+    width: 16px; height: 16px;
+    border-radius: 9px;
+    border: 2px solid #6e6e6e;
+    background: transparent;
+}
+QRadioButton[class="segment"]::indicator:checked {
+    border: 2px solid #4cc2ff;
+    background: qradialgradient(cx:0.5, cy:0.5, radius:0.5,
+                fx:0.5, fy:0.5, stop:0 #4cc2ff, stop:0.45 #4cc2ff, stop:0.5 transparent);
+}
+
+/* ---- slider ----------------------------------------------------------- */
+QSlider::groove:horizontal { height: 4px; background: #3a3a3a; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: #4cc2ff; border-radius: 2px; }
+QSlider::handle:horizontal {
+    background: #f3f3f3; width: 16px; height: 16px;
+    margin: -7px 0; border-radius: 8px;
+}
+
+/* ---- scrollbars ------------------------------------------------------- */
+QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
+QScrollBar::handle:vertical { background: #3a3a3a; border-radius: 5px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: #505050; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+
+/* ---- account menu ----------------------------------------------------- */
+QMenu {
+    background: #1f1f1f;
+    border: 1px solid #2e2e2e;
+    border-radius: 8px;
+    padding: 6px;
+}
+QMenu::item { padding: 8px 24px; border-radius: 6px; color: #f3f3f3; }
+QMenu::item:selected { background: #2d2d2d; }
+QMenu::separator { height: 1px; background: #2e2e2e; margin: 6px 8px; }

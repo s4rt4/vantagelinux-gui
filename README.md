@@ -1,57 +1,63 @@
 # Lenovo Vantage for Linux
-This shell script helps you to provide [Lenovo Vantage](https://www.lenovo.com/us/en/software/vantage) in GNU/Linux operating system.
+
+A modern, native **PyQt6** desktop app that brings the look and core features of
+the Windows *Lenovo Vantage* control center to GNU/Linux. It reads and controls
+your laptop's hardware directly through `sysfs`, `upower`, `pactl` and
+`nvidia-smi`, with privileged writes elevated via `pkexec`.
+
+> This is a ground-up GUI rewrite of the original bash + zenity script by
+> [niizam/vantage](https://github.com/niizam/vantage). The hardware logic is
+> ported faithfully — only the interface changed.
 
 ## :rocket: Features
-![image](images/main_menu.png)
-* Conservation Mode (Limit battery charge to prolong its life)
-* Always-On USB (Enable USB power output when the system is in low-power modes)
-* Thermal/Fan Mode (Quiet, balanced and performance modes)
-* FN Key Lock
-* Camera Privacy Switch
-* Microphone Privacy Switch
-* Touchpad Switch
-* Wi-Fi Switch
+
+* **Home** — device identity, battery ring, conservation status, warranty card
+* **Device settings → Power** — Conservation mode toggle, Fan mode (Super Silent /
+  Standard / Dust Cleaning / Efficient), battery health (Wh, cycles, temperature)
+* **Device settings → Input** — Fn Lock toggle, keyboard backlight
+* **Device settings → Sound** — microphone level (via PipeWire/PulseAudio)
+* **Device settings → Device details** — model, BIOS, CPU, RAM, storage (with copy)
+* **Device diagnostics → Thermal monitor** — live CPU / GPU / Disk temperatures
+  (hwmon + NVIDIA via `nvidia-smi`), with a °C / °F toggle
 
 ## :computer: Installation
 
-First of all, you need to clone the repository with this command:
 ```bash
 git clone https://github.com/niizam/vantage.git
 cd vantage
-```
-Then you can easily run this command:
-
-```bash
 sudo make install
 ```
-Run "Lenovo Vantage" from your applications list.
+
+Then launch **Lenovo Vantage** from your applications list, or run `vantage`.
+
+To try it without installing:
+
+```bash
+make run        # equivalent to: python3 vantage.py
+```
 
 ## :hotsprings: Uninstall
-To uninstall Lenovo Vantage, you can just run this:
 
 ```bash
 sudo make uninstall
 ```
 
 ## :warning: Requirements
-* `zenity`
-* `xorg-xinput` or `xinput`
-* `networkmanager`
-* `pulseaudio` or `pipewire-pulse`
 
+Installed automatically by `make install` (which calls `install.sh`):
 
-if they are not already installed, you can install them using your package manager.
+* Python 3 + **PyQt6**
+* **polkit** (`pkexec`) — for privileged sysfs writes
+* **upower** — battery information
 
-For Arch Linux:
-```bash
-sudo pacman -S zenity xorg-xinput networkmanager
-``` 
-For Debian derivatives (Ubuntu, Mint, Pop!_OS, etc):
-```bash
-sudo apt install zenity xinput
-```
-For Fedora:
-```bash
-sudo dnf install zenity xinput NetworkManager pipewire-pulseaudio
-```
+Optional (the app degrades gracefully without them): `pactl`
+(PipeWire/PulseAudio) for the microphone, `NetworkManager` for Wi-Fi,
+`nvidia-smi` for discrete-GPU temperature.
+
+## :wrench: Supported hardware
+
+Targets Lenovo laptops exposing the `VPC2004` ACPI platform device
+(`/sys/bus/platform/devices/VPC2004:*`). Features whose sysfs attributes are
+absent on a given machine are hidden automatically.
+
 ---
