@@ -32,8 +32,9 @@ your laptop's hardware directly through `sysfs`, `upower`, `pactl`, `nvidia-smi`
 * **Home** — device identity (with copy / serial reveal), live battery ring and
   charge state, conservation status, warranty lookup, and a live **System status**
   card (uptime, boot time, volume, brightness)
-* **Device settings → Power** — Conservation mode toggle, Fan mode (Super Silent /
-  Standard / Dust Cleaning / Efficient), battery health (Wh, cycles, temperature)
+* **Device settings → Power** — Conservation mode and **Rapid charge** toggles,
+  Fan mode (Super Silent / Standard / Dust Cleaning / Efficient), battery health
+  (Wh, cycles, temperature)
 * **Device settings → Display** — working brightness slider (via logind),
   Night light toggle, detected resolution
 * **Device settings → Sound** — output and microphone volume sliders
@@ -50,6 +51,17 @@ your laptop's hardware directly through `sysfs`, `upower`, `pactl`, `nvidia-smi`
 * **Utilities** — memory cleaner (drop caches) and network status
 
 ## :computer: Installation
+
+### RPM (Fedora / RHEL / openSUSE)
+
+Download the latest `.rpm` from the
+[Releases](https://github.com/s4rt4/vantagelinux-gui/releases) page, then:
+
+```bash
+sudo dnf install ./vantage-*.noarch.rpm
+```
+
+### From source
 
 ```bash
 git clone https://github.com/s4rt4/vantagelinux-gui.git

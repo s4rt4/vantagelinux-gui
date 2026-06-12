@@ -1,4 +1,4 @@
-.PHONY: install uninstall deps run
+.PHONY: install install-files uninstall deps run
 
 PREFIX  ?= /usr
 DESTDIR ?=
@@ -16,17 +16,18 @@ deps:
 run:
 	python3 vantage.py
 
-install: deps
-	# application code + assets
+# Copy the app into the prefix (no dependency handling — used by packaging too).
+install-files:
 	install -d $(APPDIR)
 	cp -r vantage_gui assets vantage.py $(APPDIR)/
-	# launcher on PATH
 	install -d $(BINDIR)
 	printf '#!/bin/sh\nexec python3 $(PREFIX)/share/vantage/vantage.py "$$@"\n' > $(BINDIR)/vantage
 	chmod a+rx $(BINDIR)/vantage
-	# icon (the Tux-on-Lenovo-red logo) + desktop entry
 	install -Dm644 assets/icons/logo.svg $(ICONDIR)/vantage.svg
 	install -Dm644 vantage.desktop $(DESKDIR)/vantage.desktop
+
+# Full install: dependencies + files (for `sudo make install` from source).
+install: deps install-files
 
 uninstall:
 	rm -rf $(APPDIR)
