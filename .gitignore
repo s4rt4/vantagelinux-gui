@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+*.pyc
+
+# Windows Vantage reference screenshots (local design reference, not shipped)
+assets/vantage screenshot/
