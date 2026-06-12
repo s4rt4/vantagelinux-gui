@@ -377,7 +377,7 @@ class SecurityPage(Page):
 class GamingPage(Page):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
-        banner = QLabel("LEGION")
+        banner = QLabel(backend.device_info().name)
         banner.setProperty("class", "legion")
         self.content.addWidget(banner)
 
