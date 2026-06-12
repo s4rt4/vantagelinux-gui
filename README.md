@@ -1,4 +1,9 @@
-# Lenovo Vantage for Linux
+# Lenovo Vantage for Linux (Unofficial)
+
+> ⚠️ **Unofficial project.** This is an independent, community-built application.
+> It is **not** affiliated with, endorsed by, or supported by Lenovo. "Lenovo"
+> and "Lenovo Vantage" are trademarks of Lenovo, used here only to describe what
+> this tool emulates. Use at your own risk.
 
 A modern, native **PyQt6** desktop app that brings the look and core features of
 the Windows *Lenovo Vantage* control center to GNU/Linux. It reads and controls

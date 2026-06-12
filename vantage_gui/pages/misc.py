@@ -206,19 +206,25 @@ class AppInfoPage(Page):
         row.addWidget(logo, 0, Qt.AlignmentFlag.AlignTop)
         col = QVBoxLayout()
         col.setSpacing(4)
-        name = QLabel("Lenovo Vantage for Linux")
+        name = QLabel("Lenovo Vantage for Linux (Unofficial)")
         name.setProperty("class", "cardTitle")
         col.addWidget(name)
         col.addWidget(_muted(f"Version {APP_VERSION}"))
         col.addWidget(_muted("A native PyQt6 control center for Lenovo laptops — "
                              "conservation mode, fan mode, Fn lock, battery health, "
                              "thermals and more, read straight from the hardware."))
+        disclaimer = _muted("Unofficial, community-built app — not affiliated with, "
+                            "endorsed by, or supported by Lenovo. \"Lenovo\" and "
+                            "\"Lenovo Vantage\" are trademarks of Lenovo.")
+        disclaimer.setStyleSheet(f"color:{C.ORANGE};")
+        col.addWidget(disclaimer)
         row.addLayout(col, 1)
         head.body.addLayout(row)
         self.content.addWidget(head)
 
         details = Card(title="About")
         for label, value in [
+            ("Status", "Unofficial — not affiliated with Lenovo"),
             ("Running on", o.name),
             ("Kernel", o.kernel),
             ("Toolkit", "PyQt6 (Qt 6)"),
