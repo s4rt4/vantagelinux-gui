@@ -85,7 +85,6 @@ def _bat_dir() -> str | None:
 @dataclass
 class DeviceInfo:
     name: str = "Lenovo Device"
-    warranty: str = "Unknown"
     device_name: str = "linux"
     product_number: str = "—"
     serial_number: str = "—"
@@ -164,7 +163,6 @@ def device_info() -> DeviceInfo:
         ]).upper()
     return DeviceInfo(
         name=name,
-        warranty="Out of warranty",
         device_name=_read("/proc/sys/kernel/hostname") or "linux",
         product_number=_read(f"{dmi}/product_name") or "—",
         serial_number=serial if serial not in (None, "", "None") else "—",

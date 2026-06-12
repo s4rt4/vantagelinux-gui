@@ -383,19 +383,6 @@ class DeviceSettingsPage(QWidget):
         info = backend.device_info()
         host, col = self._shell("Device details")
         card = Card()
-        warranty = QWidget()
-        wr = QHBoxLayout(warranty)
-        wr.setContentsMargins(0, 0, 0, 0)
-        wl = QLabel("Device warranty")
-        wl.setProperty("class", "rowTitle")
-        wl.setFixedWidth(160)
-        wv = QLabel(info.warranty)
-        wv.setProperty("class", "muted")
-        wr.addWidget(wl)
-        wr.addWidget(wv, 1)
-        wr.addWidget(Pill("Expired", "bad"))
-        card.body.addWidget(warranty)
-        card.body.addWidget(_hrule())
         rows = []
         for label, value in [
             ("Device name", info.device_name),
