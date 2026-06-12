@@ -166,18 +166,30 @@ class DeviceSettingsPage(QWidget):
         st = backend.vpc()
         host, col = self._shell("Power")
 
-        # Conservation mode + fan/thermal mode — the headline VPC controls.
-        if st.has_conservation or st.has_fan_mode:
+        # Conservation / rapid charge / fan mode — the headline battery controls.
+        rc_avail, rc_on = backend.rapid_charge()
+        if st.has_conservation or st.has_fan_mode or rc_avail:
             settings = Card(title="Battery & thermal")
+            added = False
             if st.has_conservation:
                 settings.body.addWidget(ToggleRow(
                     "Conservation mode",
                     "Caps the battery charge near 60% to extend its lifespan when "
                     "the laptop is mostly plugged in.",
                     checked=st.conservation_mode, on_toggle=backend.set_conservation))
-            if st.has_conservation and st.has_fan_mode:
-                settings.body.addWidget(_hrule())
+                added = True
+            if rc_avail:
+                if added:
+                    settings.body.addWidget(_hrule())
+                settings.body.addWidget(ToggleRow(
+                    "Rapid charge",
+                    "Charge the battery at the fastest rate. Turn off to use the "
+                    "standard charge rate.",
+                    checked=rc_on, on_toggle=backend.set_rapid_charge))
+                added = True
             if st.has_fan_mode:
+                if added:
+                    settings.body.addWidget(_hrule())
                 settings.body.addWidget(_subhead("Fan mode"))
                 fan = SegmentedControl(backend.FAN_MODES, st.fan_mode)
                 fan.changed.connect(backend.set_fan_mode)

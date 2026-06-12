@@ -304,6 +304,32 @@ def set_fan_mode(index: int) -> bool:
     return _pkexec_write(f"{d}/fan_mode" if d else None, _FAN_IDX_TO_VAL.get(index, 1))
 
 
+# --- rapid charge (kernel power_supply charge_types) -----------------------
+def _charge_types_file() -> str | None:
+    for p in sorted(glob.glob("/sys/class/power_supply/BAT*/charge_types")):
+        return p
+    return None
+
+
+def rapid_charge() -> tuple[bool, bool]:
+    """(available, on) for fast charging via the kernel `charge_types` attribute.
+
+    The file reads like `Fast [Standard] Long_Life` — the bracketed token is the
+    active mode. "Fast" is the Linux equivalent of Vantage's Rapid Charge.
+    """
+    path = _charge_types_file()
+    raw = _read(path) if path else None
+    if not raw or "Fast" not in raw:
+        return (False, False)
+    m = re.search(r"\[(\w+)\]", raw)
+    return (True, (m.group(1) if m else "") == "Fast")
+
+
+def set_rapid_charge(on: bool) -> bool:
+    path = _charge_types_file()
+    return _pkexec_write(path, "Fast" if on else "Standard") if path else False
+
+
 # --- keyboard backlight (/sys/class/leds, when present) -------------------
 @dataclass
 class KbdBacklight:
