@@ -134,18 +134,14 @@ class HomePage(Page):
                                    else "Conservation mode off")
 
     def _warranty_card(self, info: backend.DeviceInfo) -> Card:
-        card = Card(title="Warranty", menu=True)
-        disc = _StatusDisc("security", "Check warranty", C.ACCENT)
-        wrap = QHBoxLayout()
-        wrap.addStretch(1)
-        wrap.addWidget(disc)
-        wrap.addStretch(1)
-        caption = QHBoxLayout()
-        caption.addStretch(1)
-        caption.addWidget(_link("Check warranty", WARRANTY_URL))
-        caption.addStretch(1)
-        card.body.addLayout(wrap)
-        card.body.addLayout(caption)
+        card = Card(title="Warranty")
+        card.body.addStretch(1)
+        icon = SvgIcon("security", C.ACCENT, 48)
+        card.body.addWidget(icon, 0, Qt.AlignmentFlag.AlignHCenter)
+        link = _link("Check warranty", WARRANTY_URL)
+        link.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card.body.addWidget(link)
+        card.body.addStretch(1)
         return card
 
     def _support_card(self) -> Card:
@@ -213,24 +209,6 @@ class HomePage(Page):
             f"{s.volume}%" if s.volume >= 0 else "—")
         self._stat_widgets["brightness"].setText(
             f"{s.brightness}%" if s.brightness >= 0 else "—")
-
-
-class _StatusDisc(QWidget):
-    """A ringed icon disc used for the warranty status (icon + label below)."""
-
-    def __init__(self, icon: str, label: str, color: str, parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        badge = SvgIcon(icon, color, 40)
-        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text = QLabel(label)
-        text.setStyleSheet(f"color:{color}; font-weight:600;")
-        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(badge)
-        layout.addWidget(text)
 
 
 class _DarkTile(QPushButton):

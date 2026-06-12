@@ -10,10 +10,11 @@ from .toggle import ToggleSwitch
 
 
 class Card(QFrame):
-    """A rounded dark panel. Optionally shows a title row with a `...` menu.
+    """A rounded dark panel with an optional title row.
 
     Use `.body` as the parent/layout target for content, or call
-    `add(widget)` to append into the built-in vertical body layout.
+    `add(widget)` to append into the built-in vertical body layout. The `menu`
+    argument is accepted for compatibility but no longer renders anything.
     """
 
     def __init__(self, title: str | None = None, menu: bool = False, parent=None):
@@ -24,15 +25,9 @@ class Card(QFrame):
         outer.setSpacing(14)
 
         if title is not None:
-            header = QHBoxLayout()
-            header.setContentsMargins(0, 0, 0, 0)
             label = QLabel(title)
             label.setProperty("class", "cardTitle")
-            header.addWidget(label)
-            header.addStretch(1)
-            if menu:
-                header.addWidget(_DotsMenu())
-            outer.addLayout(header)
+            outer.addWidget(label)
 
         self.body = QVBoxLayout()
         self.body.setContentsMargins(0, 0, 0, 0)
@@ -41,15 +36,6 @@ class Card(QFrame):
 
     def add(self, widget: QWidget, **kw) -> None:
         self.body.addWidget(widget, **kw)
-
-
-class _DotsMenu(QLabel):
-    """Static three-dot overflow affordance (visual only in the mockup)."""
-
-    def __init__(self, parent=None):
-        super().__init__("•••", parent)
-        self.setProperty("class", "dots")
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
 
 class Pill(QLabel):
