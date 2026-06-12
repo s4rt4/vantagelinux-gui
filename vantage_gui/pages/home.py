@@ -1,8 +1,8 @@
 """Home dashboard: device card, battery ring, warranty, support tiles, promo."""
 from __future__ import annotations
 
-from PyQt6.QtCore import QSize, Qt, QTimer
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QSize, Qt, QTimer, QUrl
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtWidgets import (QGridLayout, QHBoxLayout, QLabel, QPushButton,
                              QVBoxLayout, QWidget)
 
@@ -13,11 +13,20 @@ from ..widgets.cards import Card, CopyRow, RevealRow
 from ..widgets.icon import SvgIcon
 from .common import Page
 
+REPO_URL = "https://github.com/s4rt4/vantagelinux-gui"
+WARRANTY_URL = "https://pcsupport.lenovo.com/id/id/warranty-lookup#/"
 
-def _link(text: str) -> QLabel:
+
+def _open_url(url: str) -> None:
+    QDesktopServices.openUrl(QUrl(url))
+
+
+def _link(text: str, url: str | None = None) -> QLabel:
     lbl = QLabel(text)
     lbl.setProperty("class", "link")
     lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+    if url:
+        lbl.mousePressEvent = lambda _e: _open_url(url)
     return lbl
 
 
@@ -35,6 +44,7 @@ class HomePage(Page):
         update_btn.setProperty("class", "primaryPill")
         update_btn.setIcon(QIcon(icon_pixmap("system-update", "#0a2a3f", 16)))
         update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        update_btn.clicked.connect(lambda: _open_url(REPO_URL))
         title_row.addWidget(heading)
         title_row.addStretch(1)
         title_row.addWidget(update_btn)
@@ -47,7 +57,7 @@ class HomePage(Page):
         grid.addWidget(self._battery_card(batt), 0, 2)
         grid.addWidget(self._warranty_card(info), 0, 3)
         grid.addWidget(self._support_card(), 1, 0, 1, 2)
-        grid.addWidget(self._promo_card(), 1, 2, 1, 2)
+        grid.addWidget(self._stats_card(), 1, 2, 1, 2)
         for col in range(4):
             grid.setColumnStretch(col, 1)
         self.content.addLayout(grid)
@@ -125,21 +135,14 @@ class HomePage(Page):
 
     def _warranty_card(self, info: backend.DeviceInfo) -> Card:
         card = Card(title="Warranty", menu=True)
-        ring = BatteryRing(100, C.RED, 130)
-        ring.set_percent(100)
-        # repurpose the ring as a status disc with centered "Expired"
-        ring.setVisible(False)  # the donut % isn't meaningful here
-        disc = _StatusDisc("security", "Expired", C.RED)
+        disc = _StatusDisc("security", "Check warranty", C.ACCENT)
         wrap = QHBoxLayout()
         wrap.addStretch(1)
         wrap.addWidget(disc)
         wrap.addStretch(1)
         caption = QHBoxLayout()
         caption.addStretch(1)
-        exp = QLabel("Expired · ")
-        exp.setProperty("class", "muted")
-        caption.addWidget(exp)
-        caption.addWidget(_link("Upgrade now"))
+        caption.addWidget(_link("Check warranty", WARRANTY_URL))
         caption.addStretch(1)
         card.body.addLayout(wrap)
         card.body.addLayout(caption)
@@ -151,44 +154,65 @@ class HomePage(Page):
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(12)
         tiles = [
-            ("circle-question-mark", "Troubleshoot & diagnose"),
-            ("circle-question-mark", "How to's"),
-            ("briefcase-business", "Service request"),
-            ("user", "Contact us"),
+            ("circle-question-mark", "Troubleshoot & diagnose",
+             "http://pcsupport.lenovo.com/id/id/selectproduct?linkto=diagnostics-"
+             "troubleshooting&linkTrack=footer%3ASupport_Troubleshoot%20And%20Diagnose"),
+            ("circle-question-mark", "How to's",
+             "https://pcsupport.lenovo.com/id/id/selectproduct?linkto=documentation"
+             "&linkTrack=footer:Support_Solutions"),
+            ("briefcase-business", "Service request",
+             "https://support.lenovo.com/id/id/track-repair-status/"
+             "?linktrack=footer:support_repair%20status"),
+            ("user", "Contact us", "https://support.lenovo.com/id/id/contact-us"),
         ]
-        for i, (icon, text) in enumerate(tiles):
-            grid.addWidget(_DarkTile(icon, text), i // 2, i % 2)
+        for i, (icon, text, url) in enumerate(tiles):
+            grid.addWidget(_DarkTile(icon, text, url), i // 2, i % 2)
         card.body.addLayout(grid)
         return card
 
-    def _promo_card(self) -> Card:
-        card = Card()
+    def _stats_card(self) -> Card:
+        card = Card(title="System status", menu=True)
         row = QHBoxLayout()
-        row.setSpacing(18)
-        art = QLabel()
-        art.setFixedSize(150, 120)
-        art.setProperty("class", "promoArt")
-        art.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        art.setText("Premium\nCare")
-        row.addWidget(art)
-
-        col = QVBoxLayout()
-        col.setSpacing(8)
-        head = QLabel("10% Off on Premium Care!")
-        head.setProperty("class", "cardTitle")
-        sub = QLabel("Upgrade your warranty and enjoy\ncomplete peace of mind.")
-        sub.setProperty("class", "muted")
-        col.addWidget(head)
-        col.addWidget(sub)
-        learn = QHBoxLayout()
-        learn.addWidget(SvgIcon("briefcase-business", C.ACCENT, 16))
-        learn.addWidget(_link("Learn more"))
-        learn.addStretch(1)
-        col.addLayout(learn)
-        col.addStretch(1)
-        row.addLayout(col, 1)
+        row.setSpacing(12)
+        self._stat_widgets = {}
+        for key, icon, label in [
+            ("uptime", "clock-fading", "Uptime"),
+            ("boot", "circle-power", "Boot"),
+            ("volume", "volume-2", "Volume"),
+            ("brightness", "sun", "Brightness"),
+        ]:
+            block = QVBoxLayout()
+            block.setSpacing(4)
+            block.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ic = SvgIcon(icon, C.ACCENT, 26)
+            ic.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            value = QLabel("—")
+            value.setProperty("class", "cardTitle")
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            name = QLabel(label)
+            name.setProperty("class", "muted")
+            name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            block.addWidget(ic, 0, Qt.AlignmentFlag.AlignHCenter)
+            block.addWidget(value)
+            block.addWidget(name)
+            self._stat_widgets[key] = value
+            row.addLayout(block, 1)
         card.body.addLayout(row)
+
+        self._refresh_stats()
+        timer = QTimer(self)
+        timer.timeout.connect(self._refresh_stats)
+        timer.start(3000)  # uptime / volume / brightness change over time
         return card
+
+    def _refresh_stats(self) -> None:
+        s = backend.system_stats()
+        self._stat_widgets["uptime"].setText(s.uptime)
+        self._stat_widgets["boot"].setText(s.boot)
+        self._stat_widgets["volume"].setText(
+            f"{s.volume}%" if s.volume >= 0 else "—")
+        self._stat_widgets["brightness"].setText(
+            f"{s.brightness}%" if s.brightness >= 0 else "—")
 
 
 class _StatusDisc(QWidget):
@@ -212,11 +236,13 @@ class _StatusDisc(QWidget):
 class _DarkTile(QPushButton):
     """A near-black support tile: centered icon over a label."""
 
-    def __init__(self, icon: str, text: str, parent=None):
+    def __init__(self, icon: str, text: str, url: str | None = None, parent=None):
         super().__init__(parent)
         self.setProperty("class", "tile")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMinimumHeight(78)
+        if url:
+            self.clicked.connect(lambda: _open_url(url))
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(8)

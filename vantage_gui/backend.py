@@ -843,3 +843,66 @@ def set_rgb(hex_color: str) -> bool:
 
 def set_rgb_off() -> bool:
     return set_rgb("000000")
+
+
+# --- system status (Home stats card) --------------------------------------
+@dataclass
+class SystemStats:
+    uptime: str = "—"
+    boot: str = "—"
+    volume: int = -1      # output %, -1 = unknown
+    brightness: int = -1  # %, -1 = unknown
+
+
+_boot_cache: str | None = None
+
+
+def _fmt_uptime(seconds: float) -> str:
+    s = int(seconds)
+    d, s = divmod(s, 86400)
+    h, s = divmod(s, 3600)
+    m, _ = divmod(s, 60)
+    if d:
+        return f"{d}d {h}h {m}m"
+    if h:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+
+def _boot_duration() -> str:
+    global _boot_cache
+    if _boot_cache is not None:
+        return _boot_cache
+    out = _run(["systemd-analyze", "time"])
+    val = "—"
+    m = re.search(r"=\s*([\d.]+)s\b", out)
+    if m:
+        val = f"{float(m.group(1)):.1f}s"
+    else:
+        m2 = re.search(r"=\s*(.+)$", out, re.M)
+        if m2:
+            val = m2.group(1).strip()
+    _boot_cache = val
+    return val
+
+
+def _output_volume() -> int:
+    out = _run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"])
+    m = re.search(r"(\d+)%", out)
+    return int(m.group(1)) if m else -1
+
+
+def _brightness_pct() -> int:
+    for b in sorted(glob.glob("/sys/class/backlight/*")):
+        cur = _read_int(f"{b}/brightness")
+        mx = _read_int(f"{b}/max_brightness")
+        if cur is not None and mx:
+            return round(cur / mx * 100)
+    return -1
+
+
+def system_stats() -> SystemStats:
+    up = _read("/proc/uptime")
+    uptime = _fmt_uptime(float(up.split()[0])) if up else "—"
+    return SystemStats(uptime=uptime, boot=_boot_duration(),
+                       volume=_output_volume(), brightness=_brightness_pct())
