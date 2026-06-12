@@ -989,6 +989,22 @@ def set_output_volume(percent: int) -> None:
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def open_software_updates() -> bool:
+    """Open the desktop's software/updates app (GNOME Software / Discover)."""
+    if shutil.which("gnome-software"):
+        cmd = ["gnome-software", "--mode=updates"]
+    elif shutil.which("plasma-discover"):
+        cmd = ["plasma-discover", "--mode", "update"]
+    else:
+        return False
+    try:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        return True
+    except OSError:
+        return False
+
+
 def open_settings(panel: str = "") -> bool:
     """Open the desktop's system settings (optionally a specific panel)."""
     if shutil.which("gnome-control-center"):

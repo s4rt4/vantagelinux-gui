@@ -286,8 +286,8 @@ class SystemUpdatePage(Page):
         t.setProperty("class", "cardTitle")
         left.addWidget(t)
         left.addWidget(_muted("Updates are delivered by your distribution's package "
-                              "manager. Use 'Check for updates' to query the cache for "
-                              "available package upgrades."))
+                              "manager. 'Check for updates' opens GNOME Software "
+                              "(or Discover) to review and install them."))
         left.addStretch(1)
         ar.addLayout(left, 1)
         right = QVBoxLayout()
@@ -300,20 +300,11 @@ class SystemUpdatePage(Page):
         self.content.addStretch(1)
 
     def _check_updates(self) -> None:
-        self._check_btn.setEnabled(False)
-        self._status.setText("Checking the package cache…")
-        # let the label paint before the (brief) blocking query
-        QTimer.singleShot(50, self._run_update_check)
-
-    def _run_update_check(self) -> None:
-        n = backend.update_count()
-        if n is None:
-            self._status.setText("Could not determine available updates.")
-        elif n == 0:
-            self._status.setText("✓ Your system is up to date.")
+        if backend.open_software_updates():
+            self._status.setText("Opening Software…")
         else:
-            self._status.setText(f"{n} package update(s) available.")
-        self._check_btn.setEnabled(True)
+            self._status.setText("No software updates app found "
+                                 "(install GNOME Software or Discover).")
 
 
 # --------------------------------------------------------------------------- #
