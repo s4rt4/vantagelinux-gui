@@ -57,6 +57,24 @@ def _primary_btn(text: str) -> QPushButton:
     return btn
 
 
+def _kv_row(label: str, value: str, pill=None) -> QWidget:
+    w = QWidget()
+    row = QHBoxLayout(w)
+    row.setContentsMargins(0, 6, 0, 6)
+    lbl = QLabel(label)
+    lbl.setProperty("class", "rowTitle")
+    lbl.setFixedWidth(260)
+    lbl.setWordWrap(True)
+    val = QLabel(value)
+    val.setProperty("class", "muted")
+    val.setWordWrap(True)
+    row.addWidget(lbl)
+    row.addWidget(val, 1)
+    if pill is not None:
+        row.addWidget(Pill(pill[0], pill[1]), 0, Qt.AlignmentFlag.AlignTop)
+    return w
+
+
 class DiagnosticsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -339,28 +357,54 @@ class DiagnosticsPage(QWidget):
         host, col = self._shell("System insights")
         action = Card()
         ar = QHBoxLayout()
-        ar.addStretch(1)
-        ar.addWidget(_primary_btn("Start"))
+        ar.addWidget(_muted("Check system services and logs for problems."), 1)
+        btn = _primary_btn("Run check")
+        btn.clicked.connect(self._run_insights)
+        ar.addWidget(btn)
         action.body.addLayout(ar)
         col.addWidget(action)
 
-        desc = Card()
-        desc.body.addWidget(_muted(
-            "System Insights will show any changes that may have occurred to your "
-            "device's components and can help troubleshoot any issues that you may "
-            "be experiencing. In addition, it also analyzes critical system health. "
-            "This helps to proactively identify stability risks and ensure reliable "
-            "performance."))
-        col.addWidget(desc)
+        card = Card(title="System health")
+        self._insights_box = QVBoxLayout()
+        self._insights_box.setSpacing(0)
+        card.body.addLayout(self._insights_box)
+        col.addWidget(card)
         col.addStretch(1)
+        self._run_insights()
         return host
+
+    def _run_insights(self) -> None:
+        while self._insights_box.count():
+            item = self._insights_box.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        h = backend.system_health()
+        n = len(h.failed_services or [])
+        self._insights_box.addWidget(_kv_row(
+            "Failed services", str(n),
+            ("Good", "good") if n == 0 else ("Issues", "bad")))
+        if h.failed_services:
+            self._insights_box.addWidget(_muted("   " + ", ".join(h.failed_services)))
+        self._insights_box.addWidget(_kv_row(
+            "Errors logged this boot", str(h.error_count),
+            ("Good", "good") if h.error_count == 0 else ("High", "high")))
 
     def _history_page(self) -> QWidget:
         host, col = self._shell("History")
-        card = Card()
-        card.body.addWidget(_muted("No diagnostic history yet. Results from hardware "
-                                   "scans and system insights will appear here."))
-        col.addWidget(card)
+
+        boots = Card(title="Boot history")
+        for label, when in backend.boot_history():
+            boots.body.addWidget(_kv_row(label, when))
+        col.addWidget(boots)
+
+        pkgs = Card(title="Recently updated packages")
+        ph = backend.package_history()
+        if ph:
+            for name, when in ph:
+                pkgs.body.addWidget(_kv_row(name, when))
+        else:
+            pkgs.body.addWidget(_muted("No package history available."))
+        col.addWidget(pkgs)
         col.addStretch(1)
         return host
 

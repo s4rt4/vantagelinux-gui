@@ -1005,6 +1005,37 @@ def open_software_updates() -> bool:
         return False
 
 
+def launch_app(cmd: str) -> bool:
+    """Launch a GUI app/tool by command name if it's installed."""
+    if not shutil.which(cmd):
+        return False
+    try:
+        subprocess.Popen([cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        return True
+    except OSError:
+        return False
+
+
+# (command, label, icon) — common GNOME utilities; only installed ones are shown.
+GNOME_TOOLS = [
+    ("gnome-system-monitor", "System Monitor", "device-diagnostics"),
+    ("gnome-disks", "Disks", "hard-drive"),
+    ("baobab", "Disk Usage", "hard-drive"),
+    ("gnome-logs", "Logs", "history"),
+    ("gnome-software", "Software", "system-update"),
+    ("gnome-control-center", "Settings", "device-settings"),
+    ("nautilus", "Files", "laptop"),
+    ("gnome-text-editor", "Text Editor", "about"),
+    ("gnome-calculator", "Calculator", "grid-2x2-check"),
+    ("gnome-screenshot", "Screenshot", "monitor"),
+]
+
+
+def available_tools() -> list[tuple[str, str, str]]:
+    return [t for t in GNOME_TOOLS if shutil.which(t[0])]
+
+
 def open_settings(panel: str = "") -> bool:
     """Open the desktop's system settings (optionally a specific panel)."""
     if shutil.which("gnome-control-center"):
@@ -1079,3 +1110,61 @@ def input_devices() -> list[tuple[str, str]]:
             seen.add(name)
             res.append((kind, name))
     return res
+
+
+# --- system health (Diagnostics → System insights) ------------------------
+@dataclass
+class SystemHealth:
+    failed_services: list = None   # list[str]
+    error_count: int = 0           # journal error entries this boot
+
+
+def system_health() -> SystemHealth:
+    failed = []
+    out = _run(["systemctl", "--failed", "--no-legend", "--plain"])
+    for line in out.splitlines():
+        parts = line.split()
+        if parts and "." in parts[0]:
+            failed.append(parts[0])
+    elog = _run(["journalctl", "-p", "err", "-b", "--no-pager", "-q"])
+    errors = len([l for l in elog.splitlines()
+                  if l.strip() and not l.startswith("-- ")])
+    return SystemHealth(failed_services=failed, error_count=errors)
+
+
+# --- boot & package history (Diagnostics → History) -----------------------
+def boot_history(limit: int = 6) -> list[tuple[str, str]]:
+    """Return [(label, start-time)] for recent boots, newest first."""
+    out = _run(["journalctl", "--list-boots", "--no-pager"])
+    rows = []
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 6 and parts[0].lstrip("-").isdigit():
+            idx = int(parts[0])
+            label = "Current boot" if idx == 0 else f"Boot {idx}"
+            rows.append((label, " ".join(parts[2:6])))
+    rows.reverse()
+    return rows[:limit]
+
+
+def package_history(limit: int = 8) -> list[tuple[str, str]]:
+    """Return [(package, when)] of the most recently installed/updated packages."""
+    if shutil.which("rpm"):
+        out = _run(["rpm", "-qa", "--last"])
+        rows = []
+        for line in out.splitlines()[:limit]:
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                rows.append((parts[0], parts[1].strip()))
+        return rows
+    if shutil.which("dpkg-query"):
+        log = _read("/var/log/dpkg.log") or ""
+        rows = []
+        for line in reversed(log.splitlines()):
+            m = re.match(r"(\S+ \S+) (?:install|upgrade) (\S+):\S+ \S+ (\S+)", line)
+            if m:
+                rows.append((m.group(2), f"{m.group(1)} → {m.group(3)}"))
+            if len(rows) >= limit:
+                break
+        return rows
+    return []

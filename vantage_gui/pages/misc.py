@@ -94,6 +94,27 @@ class BigTile(QPushButton):
 
 
 # --------------------------------------------------------------------------- #
+class _ToolTile(QPushButton):
+    """A compact launcher tile for a system utility (icon over a label)."""
+
+    def __init__(self, icon: str, label: str, cmd: str, parent=None):
+        super().__init__(parent)
+        self.setProperty("class", "tile")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(84)
+        self.clicked.connect(lambda: backend.launch_app(cmd))
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(8)
+        ic = SvgIcon(icon, C.ACCENT, 24)
+        ic.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl = QLabel(label)
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setProperty("class", "tileLabel")
+        layout.addWidget(ic, 0, Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(lbl)
+
+
 class UtilitiesPage(Page):
     """Two tiles (Network / Memory cleaner) that reveal a live, functional panel."""
 
@@ -118,12 +139,31 @@ class UtilitiesPage(Page):
         self._detail.addWidget(self._network_panel())
         self._detail.addWidget(self._memory_panel())
         self.content.addWidget(self._detail)
+
+        self.content.addWidget(self._tools_card())
         self.content.addStretch(1)
 
         self._net_tile.clicked.connect(lambda: self._detail.setCurrentIndex(0))
         self._mem_tile.clicked.connect(lambda: self._detail.setCurrentIndex(1))
         self._mem_tile.setChecked(True)
         self._detail.setCurrentIndex(1)
+
+    def _tools_card(self) -> Card:
+        card = Card(title="System tools")
+        tools = backend.available_tools()
+        if not tools:
+            card.body.addWidget(_muted("No GNOME utilities detected."))
+            return card
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(12)
+        cols = 4
+        for i, (cmd, label, icon) in enumerate(tools):
+            grid.addWidget(_ToolTile(icon, label, cmd), i // cols, i % cols)
+        for c in range(cols):
+            grid.setColumnStretch(c, 1)
+        card.body.addLayout(grid)
+        return card
 
     # -- Network panel -----------------------------------------------------
     def _network_panel(self) -> QWidget:
@@ -327,9 +367,16 @@ class SecurityPage(Page):
                                       "active on your Linux system."))
         row = QHBoxLayout()
         row.setSpacing(20)
-        disc = BatteryRing(round(passed / total * 100), ring_col, 120,
-                           center_text=level)
-        row.addWidget(disc)
+        # ring with a shield icon centered inside it (instead of a text label)
+        holder = QWidget()
+        holder.setFixedSize(120, 120)
+        hg = QGridLayout(holder)
+        hg.setContentsMargins(0, 0, 0, 0)
+        ring = BatteryRing(round(passed / total * 100), ring_col, 120, center_text="")
+        shield = SvgIcon("security", ring_col, 44)
+        hg.addWidget(ring, 0, 0, Qt.AlignmentFlag.AlignCenter)
+        hg.addWidget(shield, 0, 0, Qt.AlignmentFlag.AlignCenter)
+        row.addWidget(holder)
         box = QWidget()
         box.setProperty("class", "innerBox")
         bl = QVBoxLayout(box)
