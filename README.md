@@ -84,6 +84,27 @@ Optional (the app degrades gracefully without them): `pactl`
 discrete-GPU temperature, **OpenRGB** for the RGB keyboard, and
 `gnome-control-center` / `gnome-software` for the "open system settings" buttons.
 
+## :keyboard: RGB keyboard (Lenovo Spectrum)
+
+The keyboard backlight on these laptops is an **ITE 8295** RGB controller, which
+is driven through **[OpenRGB](https://openrgb.org/)** — it isn't exposed through
+standard `sysfs`. To enable the lighting controls on the *Gaming* page:
+
+1. Install OpenRGB:
+   ```bash
+   sudo dnf install openrgb        # Fedora
+   # sudo apt install openrgb      # Debian/Ubuntu
+   # sudo pacman -S openrgb        # Arch
+   ```
+2. **Reboot once** so OpenRGB's udev rule grants your user session access to the
+   keyboard (without it, OpenRGB would require root).
+3. Open the app → **Gaming → Keyboard lighting** and pick a profile (Off / 1 / 2
+   / 3) or a custom color.
+
+Under the hood the app keeps a background `openrgb --server` running and applies
+colors over its SDK (`--client`), so changes are near-instant. If OpenRGB isn't
+installed, the card simply shows a hint instead.
+
 ## :wrench: Supported hardware
 
 Targets Lenovo laptops exposing the `VPC2004` ACPI platform device
