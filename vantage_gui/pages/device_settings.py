@@ -42,7 +42,10 @@ def _link_row(text: str, on_click=None) -> QWidget:
     lbl.setProperty("class", "link")
     lbl.setCursor(Qt.CursorShape.PointingHandCursor)
     if on_click is not None:
-        lbl.mousePressEvent = lambda _e: on_click()
+        def _press(_e, fn=on_click):
+            fn()  # discard the return value — event handlers must return None
+
+        lbl.mousePressEvent = _press
     row.addWidget(lbl)
     row.addWidget(SvgIcon("monitor", C.ACCENT, 15))
     row.addStretch(1)
