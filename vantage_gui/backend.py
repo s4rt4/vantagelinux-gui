@@ -906,3 +906,162 @@ def system_stats() -> SystemStats:
     uptime = _fmt_uptime(float(up.split()[0])) if up else "—"
     return SystemStats(uptime=uptime, boot=_boot_duration(),
                        volume=_output_volume(), brightness=_brightness_pct())
+
+
+# --- display info + brightness (Device settings → Display) -----------------
+@dataclass
+class DisplayOut:
+    name: str          # eDP-1 / HDMI-A-1
+    resolution: str    # 1920x1080
+    modes: int = 0
+
+
+def displays() -> list[DisplayOut]:
+    out: list[DisplayOut] = []
+    for c in sorted(glob.glob("/sys/class/drm/card*-*")):
+        if (_read(f"{c}/status") or "") != "connected":
+            continue
+        name = os.path.basename(c).split("-", 1)[-1]
+        modes = (_read(f"{c}/modes") or "").splitlines()
+        out.append(DisplayOut(name=name,
+                              resolution=modes[0] if modes else "—",
+                              modes=len(modes)))
+    return out
+
+
+def _backlight_dev() -> str | None:
+    for b in sorted(glob.glob("/sys/class/backlight/*")):
+        return os.path.basename(b)
+    return None
+
+
+@dataclass
+class Brightness:
+    present: bool = False
+    percent: int = -1
+    device: str = ""
+
+
+def brightness() -> Brightness:
+    dev = _backlight_dev()
+    if not dev:
+        return Brightness()
+    cur = _read_int(f"/sys/class/backlight/{dev}/brightness")
+    mx = _read_int(f"/sys/class/backlight/{dev}/max_brightness")
+    pct = round(cur / mx * 100) if cur is not None and mx else -1
+    return Brightness(present=True, percent=pct, device=dev)
+
+
+def set_brightness(percent: int) -> bool:
+    """Set screen brightness (0..100) via logind — no root needed for the
+    active session. Falls back to a pkexec sysfs write."""
+    dev = _backlight_dev()
+    if not dev:
+        return False
+    mx = _read_int(f"/sys/class/backlight/{dev}/max_brightness") or 0
+    if not mx:
+        return False
+    raw = max(1, round(max(1, min(100, percent)) / 100 * mx))  # never fully off
+    try:
+        subprocess.run(
+            ["busctl", "call", "org.freedesktop.login1",
+             "/org/freedesktop/login1/session/auto",
+             "org.freedesktop.login1.Session", "SetBrightness", "ssu",
+             "backlight", dev, str(raw)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            check=True, timeout=5)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        return _pkexec_write(f"/sys/class/backlight/{dev}/brightness", raw)
+
+
+# --- output (speaker) volume + open system settings ------------------------
+def output_volume() -> tuple[int, bool]:
+    out = _run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"])
+    m = re.search(r"(\d+)%", out)
+    pct = int(m.group(1)) if m else -1
+    muted = "yes" in _run(["pactl", "get-sink-mute", "@DEFAULT_SINK@"]).lower()
+    return pct, muted
+
+
+def set_output_volume(percent: int) -> None:
+    subprocess.run(
+        ["pactl", "set-sink-volume", "@DEFAULT_SINK@",
+         f"{max(0, min(100, percent))}%"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def open_settings(panel: str = "") -> bool:
+    """Open the desktop's system settings (optionally a specific panel)."""
+    if shutil.which("gnome-control-center"):
+        cmd = ["gnome-control-center"] + ([panel] if panel else [])
+    elif shutil.which("systemsettings"):
+        cmd = ["systemsettings"]
+    elif shutil.which("systemsettings5"):
+        cmd = ["systemsettings5"]
+    else:
+        return False
+    try:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        return True
+    except OSError:
+        return False
+
+
+# --- gsettings-backed toggles (GNOME) -------------------------------------
+def gsettings_bool(schema: str, key: str):
+    """Return a gsettings boolean, or None if unavailable (gate UI on None)."""
+    if not shutil.which("gsettings"):
+        return None
+    out = _run(["gsettings", "get", schema, key])
+    if not out:
+        return None
+    return out.strip().lower() == "true"
+
+
+def set_gsettings_bool(schema: str, key: str, value: bool) -> None:
+    if shutil.which("gsettings"):
+        subprocess.run(["gsettings", "set", schema, key,
+                        "true" if value else "false"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+NIGHT_LIGHT = ("org.gnome.settings-daemon.plugins.color", "night-light-enabled")
+TOUCHPAD_TAP = ("org.gnome.desktop.peripherals.touchpad", "tap-to-click")
+TOUCHPAD_NSCROLL = ("org.gnome.desktop.peripherals.touchpad", "natural-scroll")
+
+
+# --- input devices (Device settings → Input) ------------------------------
+_INPUT_NOISE = ("button", "speaker", "video bus", "consumer control",
+                "system control", "wireless radio", "headphone", "extra buttons",
+                "hda ", "mic ")
+
+
+def input_devices() -> list[tuple[str, str]]:
+    """List real keyboards / touchpads / mice from /proc/bus/input/devices."""
+    data = _read("/proc/bus/input/devices") or ""
+    res: list[tuple[str, str]] = []
+    seen = set()
+    for block in data.split("\n\n"):
+        nm = re.search(r'N: Name="([^"]+)"', block)
+        if not nm:
+            continue
+        name = nm.group(1)
+        low = name.lower()
+        if any(n in low for n in _INPUT_NOISE):
+            continue
+        h = re.search(r"H: Handlers=(.+)", block)
+        handlers = (h.group(1) if h else "").lower()
+        if "touchpad" in low or "touchpad" in handlers:
+            kind = "Touchpad"
+        elif "mouse" in handlers and "keyboard" not in low:
+            kind = "Mouse"
+        elif "kbd" in handlers and "keyboard" in low:
+            kind = "Keyboard"
+        else:
+            continue
+        if name not in seen:
+            seen.add(name)
+            res.append((kind, name))
+    return res

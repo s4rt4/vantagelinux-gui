@@ -33,7 +33,7 @@ def _hrule() -> QFrame:
     return line
 
 
-def _link_row(text: str) -> QWidget:
+def _link_row(text: str, on_click=None) -> QWidget:
     w = QWidget()
     row = QHBoxLayout(w)
     row.setContentsMargins(0, 0, 0, 0)
@@ -41,8 +41,10 @@ def _link_row(text: str) -> QWidget:
     lbl = QLabel(text)
     lbl.setProperty("class", "link")
     lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+    if on_click is not None:
+        lbl.mousePressEvent = lambda _e: on_click()
     row.addWidget(lbl)
-    row.addWidget(SvgIcon("history", C.ACCENT, 15))  # external-link affordance
+    row.addWidget(SvgIcon("monitor", C.ACCENT, 15))
     row.addStretch(1)
     return w
 
@@ -58,6 +60,32 @@ def _muted(text: str) -> QLabel:
     lbl.setProperty("class", "muted")
     lbl.setWordWrap(True)
     return lbl
+
+
+def _slider_block(icon: str, value: int, on_change, lo: int = 0, hi: int = 100) -> QWidget:
+    """Icon + horizontal slider with a live percentage label."""
+    box = QWidget()
+    v = QVBoxLayout(box)
+    v.setContentsMargins(0, 0, 0, 0)
+    v.setSpacing(6)
+    val = QLabel(f"{value}%")
+    val.setProperty("class", "muted")
+    val.setAlignment(Qt.AlignmentFlag.AlignRight)
+    v.addWidget(val)
+    srow = QHBoxLayout()
+    srow.addWidget(SvgIcon(icon, C.TEXT_DIM, 18))
+    slider = QSlider(Qt.Orientation.Horizontal)
+    slider.setRange(lo, hi)
+    slider.setValue(max(lo, min(hi, value)))
+
+    def changed(x):
+        val.setText(f"{x}%")
+        on_change(x)
+
+    slider.valueChanged.connect(changed)
+    srow.addWidget(slider, 1)
+    v.addLayout(srow)
+    return box
 
 
 class DeviceSettingsPage(QWidget):
@@ -88,7 +116,9 @@ class DeviceSettingsPage(QWidget):
             "display": self._display_page(),
             "sound": self._sound_page(),
             "input": self._input_page(),
-            "widgets": self._simple_page("Widgets", "Configure dashboard widgets."),
+            "widgets": self._coming_soon_page(
+                "Widgets", "Dashboard widgets aren't available yet — "
+                "they're planned for a future update."),
             "details": self._details_page(),
         }
         self._order = [k for k, _i, _t in SUB_NAV]
@@ -204,84 +234,144 @@ class DeviceSettingsPage(QWidget):
 
     def _display_page(self) -> QWidget:
         host, col = self._shell("Display")
-        cam = Card()
-        cam.body.addWidget(_subhead("Camera"))
-        cam.body.addWidget(_muted(
-            "Vantage no longer provides in-app camera settings. You can change "
-            "brightness, contrast, sharpness, and privacy settings through your "
-            "system camera settings."))
-        cam.body.addWidget(_link_row("System camera settings"))
-        col.addWidget(cam)
 
-        adv = Card()
-        adv.body.addWidget(_subhead("Advanced display settings"))
-        adv.body.addWidget(_muted("Adjust the brightness of the built-in display or "
-                                  "change the size of text, apps, and other items."))
-        adv.body.addWidget(_link_row("System display settings"))
-        adv.body.addWidget(_hrule())
-        adv.body.addWidget(_subhead("Colors & themes"))
-        adv.body.addWidget(_muted("Personalize your background, colors, and contrast "
-                                  "themes in your system's personalization settings."))
-        adv.body.addWidget(_link_row("System personalization settings"))
-        col.addWidget(adv)
+        br = backend.brightness()
+        if br.present:
+            bcard = Card()
+            bcard.body.addWidget(_subhead("Brightness"))
+            bcard.body.addWidget(
+                _slider_block("sun", br.percent, backend.set_brightness, lo=5))
+            nl = backend.gsettings_bool(*backend.NIGHT_LIGHT)
+            if nl is not None:
+                bcard.body.addWidget(_hrule())
+                bcard.body.addWidget(ToggleRow(
+                    "Night light",
+                    "Shift the display to warmer colors to reduce eye strain.",
+                    checked=nl,
+                    on_toggle=lambda v: backend.set_gsettings_bool(*backend.NIGHT_LIGHT, v)))
+            col.addWidget(bcard)
+
+        info = Card()
+        info.body.addWidget(_subhead("Displays"))
+        outs = backend.displays()
+        if outs:
+            for d in outs:
+                info.body.addWidget(
+                    self._glance_row(d.name, f"{d.resolution}  ·  {d.modes} modes"))
+        else:
+            info.body.addWidget(_muted("No connected display detected."))
+        info.body.addWidget(_hrule())
+        info.body.addWidget(_link_row("Open system display settings",
+                                      lambda: backend.open_settings("display")))
+        col.addWidget(info)
+
+        pers = Card()
+        pers.body.addWidget(_subhead("Colors & themes"))
+        pers.body.addWidget(_muted("Personalize your background, colors, and contrast "
+                                   "themes in the system appearance settings."))
+        pers.body.addWidget(_link_row("Open appearance settings",
+                                      lambda: backend.open_settings("background")))
+        col.addWidget(pers)
         col.addStretch(1)
         return host
 
     def _sound_page(self) -> QWidget:
-        m = backend.mic()
         host, col = self._shell("Sound")
-        card = Card()
-        card.body.addWidget(_subhead("Input"))
-        card.body.addWidget(_hrule())
-        card.body.addWidget(QLabel(m.name))
-        card.body.addWidget(_link_row("Choose audio device"))
-        slider = QSlider(Qt.Orientation.Horizontal)
-        slider.setRange(0, 100)
-        slider.setValue(m.volume)
-        slider.valueChanged.connect(backend.set_mic_volume)
-        srow = QHBoxLayout()
-        srow.addWidget(SvgIcon("music-2", C.TEXT_DIM, 18))
-        srow.addWidget(slider, 1)
-        card.body.addLayout(srow)
 
-        warn = QFrame()
-        warn.setProperty("class", "noticeBox")
-        wl = QHBoxLayout(warn)
-        wl.addWidget(SvgIcon("bell", C.ORANGE, 20), 0, Qt.AlignmentFlag.AlignTop)
-        wc = QVBoxLayout()
-        wc.addWidget(_muted("To adjust the built-in microphone settings, please allow "
-                            "access to the microphone in your system privacy settings."))
-        wc.addWidget(_link_row("System privacy & security settings"))
-        wl.addLayout(wc, 1)
-        card.body.addWidget(warn)
-        col.addWidget(card)
+        ovol, _omute = backend.output_volume()
+        out = Card()
+        out.body.addWidget(_subhead("Output volume"))
+        out.body.addWidget(
+            _slider_block("volume-2", max(ovol, 0), backend.set_output_volume))
+        out.body.addWidget(_hrule())
+        out.body.addWidget(_link_row("Open system sound settings",
+                                     lambda: backend.open_settings("sound")))
+        col.addWidget(out)
+
+        m = backend.mic()
+        inp = Card()
+        inp.body.addWidget(_subhead("Microphone"))
+        inp.body.addWidget(QLabel(m.name))
+        inp.body.addWidget(
+            _slider_block("music-2", max(m.volume, 0), backend.set_mic_volume))
+        col.addWidget(inp)
         col.addStretch(1)
         return host
 
     def _input_page(self) -> QWidget:
         st = backend.vpc()
         host, col = self._shell("Input")
-        card = Card()
-        need_rule = False
 
-        # Keyboard backlight — only if a controllable LED exists (82K2 has none)
+        # ---- Keyboard ----
+        kcard = Card()
+        kcard.body.addWidget(_subhead("Keyboard"))
         kbd = backend.kbd_backlight()
         if kbd.present:
-            card.body.addWidget(_subhead("Keyboard backlight brightness (Fn + Space)"))
+            kcard.body.addWidget(_muted("Backlight brightness (Fn + Space)"))
             seg = SegmentedControl(kbd.levels, kbd.current)
             seg.changed.connect(backend.set_kbd_backlight)
-            card.body.addWidget(seg)
-            need_rule = True
-
+            kcard.body.addWidget(seg)
+            kcard.body.addWidget(_hrule())
         if st.has_fn_lock:
-            if need_rule:
-                card.body.addWidget(_hrule())
-            card.body.addWidget(ToggleRow(
+            kcard.body.addWidget(ToggleRow(
                 "Function lock (Fn + FnLock)",
                 "Switch functions of the function keys (F1–F12). Function keys provide "
                 "two sets of functions: special and standard.",
                 checked=st.fn_lock, on_toggle=backend.set_fn_lock))
+            kcard.body.addWidget(_hrule())
+        kcard.body.addWidget(_link_row("Open keyboard settings",
+                                       lambda: backend.open_settings("keyboard")))
+        col.addWidget(kcard)
 
+        # ---- Touchpad (GNOME peripherals via gsettings) ----
+        tap = backend.gsettings_bool(*backend.TOUCHPAD_TAP)
+        if tap is not None:
+            tcard = Card()
+            tcard.body.addWidget(_subhead("Touchpad"))
+            names = [n for k, n in backend.input_devices() if k == "Touchpad"]
+            if names:
+                tcard.body.addWidget(_muted(names[0]))
+            tcard.body.addWidget(ToggleRow(
+                "Tap to click", "Tap the touchpad surface to register a click.",
+                checked=tap,
+                on_toggle=lambda v: backend.set_gsettings_bool(*backend.TOUCHPAD_TAP, v)))
+            nsc = backend.gsettings_bool(*backend.TOUCHPAD_NSCROLL)
+            if nsc is not None:
+                tcard.body.addWidget(_hrule())
+                tcard.body.addWidget(ToggleRow(
+                    "Natural scrolling", "Scrolling moves the content, not the view.",
+                    checked=nsc,
+                    on_toggle=lambda v: backend.set_gsettings_bool(*backend.TOUCHPAD_NSCROLL, v)))
+            col.addWidget(tcard)
+
+        # ---- Detected input devices ----
+        devs = backend.input_devices()
+        if devs:
+            dcard = Card()
+            dcard.body.addWidget(_subhead("Detected input devices"))
+            for kind, name in devs:
+                dcard.body.addWidget(self._glance_row(kind, name))
+            col.addWidget(dcard)
+
+        col.addStretch(1)
+        return host
+
+    def _coming_soon_page(self, title: str, message: str) -> QWidget:
+        host, col = self._shell(title)
+        card = Card()
+        box = QVBoxLayout()
+        box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        box.setSpacing(10)
+        icon = SvgIcon("grid-2x2-check", C.TEXT_DIM, 48)
+        box.addWidget(icon, 0, Qt.AlignmentFlag.AlignHCenter)
+        head = QLabel("Coming soon")
+        head.setProperty("class", "cardTitle")
+        head.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        box.addWidget(head)
+        msg = _muted(message)
+        msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        box.addWidget(msg)
+        card.body.addLayout(box)
         col.addWidget(card)
         col.addStretch(1)
         return host
@@ -346,15 +436,6 @@ class DeviceSettingsPage(QWidget):
         QApplication.clipboard().setText(text)
         if button is not None:
             button.setText("Copied!")
-
-    def _simple_page(self, title: str, message: str) -> QWidget:
-        host, col = self._shell(title)
-        card = Card()
-        card.body.addWidget(_muted(message))
-        col.addWidget(card)
-        col.addStretch(1)
-        return host
-
 
 def _dot_label(color: str, text: str) -> QWidget:
     w = QWidget()
